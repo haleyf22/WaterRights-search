@@ -58,8 +58,9 @@ server <- function(input, output, session) {
   )
 }
 
-# Run the app
-shinyApp(ui = ui, server = server)
 
 # Create a dependency file for Connect Cloud 
 rsconnect::writeManifest()
+
+# Run the app
+shinyApp(ui = ui, server = server)
