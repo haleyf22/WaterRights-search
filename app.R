@@ -21,6 +21,13 @@ get_wdid_df <- function(wdid) {
     text_resp <- rawToChar(resp_body_raw(resp))
     if (grepl("wdid,", text_resp)) {
       df <- read_csv(text_resp, show_col_types = FALSE)
+      
+      # remove any rows where first column equals its name (header as row)
+      header_names <- names(df)
+      
+      # remove rows where the first column matches its name ("wdid")
+      df <- df[df[[1]] != "waterRightNetAmtNum", ]
+      df <- df[df[[1]] != "1", ]
       return(df)
     } else {
       stop(paste("No data returned for WDID:", wdid))
