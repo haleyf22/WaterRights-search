@@ -1768,8 +1768,11 @@
     }
   },
   "files": {
+    ".RData": {
+      "checksum": "cf8023292e9611e96e23e3ece5d80cb8"
+    },
     "app.R": {
-      "checksum": "ba6a3323d5797c9682608c7b22d20986"
+      "checksum": "2c974027fe3639cef6dce4352705047b"
     }
   },
   "users": null
