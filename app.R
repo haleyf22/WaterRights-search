@@ -26,8 +26,9 @@ get_wdid_df <- function(wdid) {
       header_names <- names(df)
       
       # remove rows where the first column matches its name ("wdid")
-      df <- df[df[[1]] != "waterRightNetAmtNum", ]
       df <- df[df[[1]] != "1", ]
+      df <- df[!apply(df, 1, function(row) all(row == header_names)), ]
+      
       return(df)
     } else {
       stop(paste("No data returned for WDID:", wdid))
