@@ -5,33 +5,39 @@ library(shiny)
 library(httr2)
 library(bslib)
 library(rsconnect)
+library(readr)  
+library(dplyr)
 
-# Function to get CSV content from WDID
-get_wdid_csv <- function(wdid) {
+# Function to download raw data for a single WDID and return as a data.frame
+get_wdid_df <- function(wdid) {
   base_url <- "https://dwr.state.co.us/Rest/GET/api/v2/waterrights/netamount/"
-  fields <- "waterRightNetAmtNum,wdid,structureName,structureType,waterSource,gnisId,streamMile,division,waterDistrict,county,q10,q40,q160,section,township,range,pm,coordinatesEw,coordinatesEwDir,coordinatesNs,coordinatesNsDir,utmX,utmY,latitude,longitude,locationAccuracy,adjudicationDate,priorAdjudicationDate,appropriationDate,adminNumber,orderNumber,priorityNumber,associatedCaseNumbers,decreedUses,netAbsolute,netConditional,netApexAbsolute,netApexConditional,decreedUnits,seasonalLimitation,comments,lastModified,permit,moreInformation"
+  fields <- "waterRightNetAmtNum,wdid,structureName,structureType,waterSource,gnisId,streamMile,division,waterDistrict,county,q10,q40,q160,section,township,range,pm,coordinatesEw,coordinatesEwDir,coordinatesNs,utmX,utmY,latitude,longitude,locationAccuracy,adjudicationDate,priorAdjudicationDate,appropriationDate,adminNumber,orderNumber,priorityNumber,associatedCaseNumbers,decreedUses,netAbsolute,netConditional,netApexAbsolute,netApexConditional,decreedUnits,seasonalLimitation,comments,lastModified,permit,moreInformation"
   
   full_url <- paste0(base_url, "?format=csv&fields=", URLencode(fields), "&wdid=", wdid)
   req <- request(full_url)
   resp <- req_perform(req)
   
   if (resp_status(resp) == 200) {
-    return(resp_body_raw(resp))
+    text_resp <- rawToChar(resp_body_raw(resp))
+    if (grepl("wdid,", text_resp)) {
+      df <- read_csv(text_resp, show_col_types = FALSE)
+      return(df)
+    } else {
+      stop(paste("No data returned for WDID:", wdid))
+    }
   } else {
-    stop(paste("Failed to retrieve data. Status code:", resp_status(resp)))
+    stop(paste("Request failed for WDID:", wdid, "Status code:", resp_status(resp)))
   }
 }
 
 # UI
-ui <- fluidPage(theme = bs_theme(bootswatch = "darkly",
-                                 bg = "#222222",
-                                 fg = "#86C7ED",
-                                 success ="#86C7ED"),
+ui <- fluidPage(
+  theme = bs_theme(bootswatch = "darkly", bg = "#222222", fg = "#86C7ED", success ="#86C7ED"),
   titlePanel("Water Rights Net Amount CSV Downloader"),
   sidebarLayout(
     sidebarPanel(
-      textInput("wdid", "Enter WDID:", value = "4400516"),
-      downloadButton("download_csv", "Download CSV")
+      textAreaInput("wdid", "Enter WDID(s), separated by commas and no space:", value = "4404516"),
+      downloadButton("download_csv", "Download Combined CSV")
     ),
     mainPanel(
       verbatimTextOutput("status")
@@ -41,26 +47,43 @@ ui <- fluidPage(theme = bs_theme(bootswatch = "darkly",
 
 # Server
 server <- function(input, output, session) {
-  
   output$download_csv <- downloadHandler(
     filename = function() {
-      paste0("wdid_", input$wdid, ".csv")
+      paste0("wdids_combined_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) {
-      tryCatch({
-        csv_data <- get_wdid_csv(input$wdid)
-        writeBin(csv_data, file)
-        output$status <- renderText("✅ CSV downloaded successfully.")
-      }, error = function(e) {
-        output$status <- renderText(paste("❌ Error:", e$message))
-      })
+      # Split input into vector of WDIDs (handling commas, spaces, newlines)
+      wdid_list <- unlist(strsplit(isolate(input$wdid), "[,\\s]+"))
+      wdid_list <- wdid_list[wdid_list != ""]
+      
+      all_results <- list()
+      errors <- c()
+      
+      for (wdid in wdid_list) {
+        tryCatch({
+          df <- get_wdid_df(wdid)
+          all_results[[wdid]] <- df
+        }, error = function(e) {
+          errors <<- c(errors, paste("WDID", wdid, ":", e$message))
+        })
+      }
+      
+      if (length(all_results) == 0) {
+        output$status <- renderText(paste("❌ No valid data downloaded.", paste(errors, collapse = "; ")))
+        writeLines("No data downloaded.", file)
+      } else {
+        combined <- dplyr::bind_rows(all_results)
+        write_csv(combined, file)
+        msg <- paste0("✅ Downloaded ", length(all_results), " WDID(s).")
+        if (length(errors) > 0) {
+          msg <- paste0(msg, "\nErrors:\n", paste(errors, collapse = "\n"))
+        }
+        output$status <- renderText(msg)
+      }
     }
   )
 }
 
-
-# Create a dependency file for Connect Cloud 
 rsconnect::writeManifest()
 
-# Run the app
 shinyApp(ui = ui, server = server)
