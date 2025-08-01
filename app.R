@@ -10,11 +10,6 @@ library(dplyr)
 library(jsonlite)
 
 
-# print actual API output to diagnose
-resp <- httr::GET("https://dwr.state.co.us/Rest/GET/api/v2/waterrights/netamount/?format=csv&fields=waterRightNetAmtNum%2Cwdid%2CstructureName%2CstructureType%2CwaterSource%2CgnisId%2CstreamMile%2Cdivision%2CwaterDistrict%2Ccounty%2Cq10%2Cq40%2Cq160%2Csection%2Ctownship%2Crange%2Cpm%2CcoordinatesEw%2CcoordinatesEwDir%2CcoordinatesNs%2CcoordinatesNsDir%2CutmX%2CutmY%2Clatitude%2Clongitude%2ClocationAccuracy%2CadjudicationDate%2CpriorAdjudicationDate%2CappropriationDate%2CadminNumber%2CorderNumber%2CpriorityNumber%2CassociatedCaseNumbers%2CdecreedUses%2CnetAbsolute%2CnetConditional%2CnetApexAbsolute%2CnetApexConditional%2CdecreedUnits%2CseasonalLimitation%2Ccomments%2ClastModified%2Cpermit%2CmoreInformation&wdid=4404515")
-text_resp <- httr::content(resp, as = "text", encoding = "UTF-8")
-cat(substr(text_resp, 1, 1000))  # Print first 1000 chars
-
 # Function to download raw data for a single WDID and return as a data.frame
 
 # Water Rights Net Amount
