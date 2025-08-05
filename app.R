@@ -24,7 +24,7 @@ get_wdid_df <- function(wdid) {
   if (resp_status(resp) == 200) {
     text_resp <- rawToChar(resp_body_raw(resp))
     if (grepl("wdid,", text_resp)) {
-      df <- read_csv(text_resp, skip = 2, show_col_types = FALSE)
+      df <- read_csv(text_resp, skip = 2, show_col_types = FALSE) # skip first two rows to clean up output
       
       # remove any rows where first column equals its name (header as row)
       header_names <- names(df)
@@ -75,6 +75,11 @@ get_structure_df <- function(wdid) {
 # -----UI-----
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "darkly", bg = "#222222", fg = "#86C7ED", success = "#86C7ED"),
+  # add logo above title
+  tags$div(
+    style = "text-align:center; margin-bottom:10px;",
+    tags$img(src = "logo.png", height = "80px")
+  ),
   titlePanel("CO DWR Net Amount & Structure CSV Downloader"),
   sidebarLayout(
     sidebarPanel(

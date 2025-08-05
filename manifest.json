@@ -1769,10 +1769,13 @@
   },
   "files": {
     ".RData": {
-      "checksum": "88580cb8a7475fdeed6ce4a9a1cb4743"
+      "checksum": "2ea921df6e8ea0b0bf92034f5c3ad303"
     },
     "app.R": {
-      "checksum": "aa68fc21a804014e24eea4dc676a0f49"
+      "checksum": "61abfbfe4c636f9300498497a7e9e98a"
+    },
+    "www/logo.png": {
+      "checksum": "b4b5db00428494af788a1ce972978af4"
     }
   },
   "users": null
