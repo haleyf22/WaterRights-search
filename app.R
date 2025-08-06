@@ -72,22 +72,48 @@ get_structure_df <- function(wdid) {
   }
 }
 
+# Well Permits
+get_wellpermits_df <- function(receipt) {
+  base_url <- "https://dwr.state.co.us/Rest/GET/api/v2/wellpermits/wellpermit/"
+  fields <- "receipt,permit,permitCurrentStatusDescr,contactName,contactAddress,contactCity,contactStateOrProvince,contactPostalCode,division,waterDistrict,county,designatedBasinName,managementDistrictName,denverBasinAquifer,locationType,pm,township,range,section,q160,q40,q10,coordsEw,coordsEwDir,coordsNs,coordsNsDir,utmX,utmY,latitude,longitude,locationAccuracy,parcelName,physicalAddress,physicalCity,physicalStateOrProvince,physicalPostalCode,permitCategoryDescr,datePermitIssued,date1stBeneficialUse,datePermitExpires,dateWellCompleted,datePumpInstalled,dateWellPlugged,associatedAquifers,associatedUses,elevation,depthTotal,topPerforatedCasing,bottomPerforatedCasing,pumpTestYield,staticWaterLevel,staticWaterLevelDate,wdid,associatedCaseNumbers,modified,moreInformation,dateApplicationReceived,drillerLic,driller,pumpLic,pumpInstaller,contactType,asBuiltAquifers"
+  
+  full_url <- paste0(base_url, "?format=csv&fields=", URLencode(fields), "&receipt=", receipt)
+  req <- request(full_url)
+  resp <- req_perform(req)
+  
+  if (resp_status(resp) == 200) {
+    text_resp <- rawToChar(resp_body_raw(resp))
+    if (grepl("receipt,", text_resp)) {
+      df <- read_csv(text_resp, skip = 2, show_col_types = FALSE)
+      
+      # remove any rows where first column equals its name (header as row)
+      header_names <- names(df)
+      
+      # remove rows where the first column matches its name
+      #df <- df[df[[1]] != "1", ]
+      df <- df[!apply(df, 1, function(row) all(row == header_names)), ]
+      
+      return(df)
+    } else {
+      stop(paste("No data returned for Receipt:", receipt))
+    }
+  } else {
+    stop(paste("Request failed for Receipt:", receipt, "Status code:", resp_status(resp)))
+  }
+}
+
 # -----UI-----
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "darkly", bg = "#222222", fg = "#86C7ED", success = "#86C7ED"),
-  # add logo above title
-  tags$div(
-    style = "text-align:center; margin-bottom:10px;",
-    tags$img(src = "logo.png", height = "80px")
-  ),
-  titlePanel("CO DWR Net Amount & Structure CSV Downloader"),
+  titlePanel("CO DWR Water Rights Search Tool & CSV Downloader"),
   sidebarLayout(
     sidebarPanel(
       radioButtons("search_type", "Search type:",
                    choices = c("Water Rights Net Amount" = "netamt",
-                               "Structure Search" = "structure"),
+                               "Structure Search" = "structure",
+                               "Well Permit Search" = "permit"),
                    selected = "netamt"),
-      textAreaInput("wdid", "Enter WDID(s), separated by commas and no spaces:", value = "4404516"),
+      uiOutput("id_label"),
       downloadButton("download_csv", "Download Combined CSV")
     ),
     mainPanel(
@@ -99,37 +125,43 @@ ui <- fluidPage(
 
 # -----Server-----
 server <- function(input, output, session) {
+  output$id_label <- renderUI({
+    lab <- switch(input$search_type,
+                  netamt = "Enter WDID(s), separated by commas and no spaces:",
+                  structure = "Enter WDID(s), separated by commas and no spaces:",
+                  permit = "Enter Receipt Number(s), separated by commas and no spaces:"
+    )
+    textAreaInput("ids", lab, value = ifelse(input$search_type == "permit", "9601046", "4404516"))
+  })
+  
   output$download_csv <- downloadHandler(
     filename = function() {
-      paste0("wdids_", input$search_type, "_combined_", format(Sys.Date(), "%Y%m%d"), ".csv")
+      paste0(input$search_type, "_combined_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) {
-      wdid_list <- unlist(strsplit(isolate(input$wdid), "[,\\s]+"))
-      wdid_list <- wdid_list[wdid_list != ""]
-      
+      id_list <- unlist(strsplit(isolate(input$ids), "[,\\s]+"))
+      id_list <- id_list[id_list != ""]
       all_results <- list()
       errors <- c()
-      
-      for (wdid in wdid_list) {
+      for (id in id_list) {
         tryCatch({
-          if (input$search_type == "netamt") {
-            df <- get_wdid_df(wdid)
-          } else {
-            df <- get_structure_df(wdid)
-          }
-          all_results[[wdid]] <- df
+          df <- switch(input$search_type,
+                       netamt = get_wdid_df(id),
+                       structure = get_structure_df(id),
+                       permit = get_wellpermits_df(id)
+          )
+          all_results[[id]] <- df
         }, error = function(e) {
-          errors <<- c(errors, paste("WDID", wdid, ":", e$message))
+          errors <<- c(errors, paste("ID", id, ":", e$message))
         })
       }
-      
       if (length(all_results) == 0) {
         output$status <- renderText(paste("❌ No valid data downloaded.", paste(errors, collapse = "; ")))
         writeLines("No data downloaded.", file)
       } else {
-        combined <- dplyr::bind_rows(all_results)
-        readr::write_csv(combined, file)
-        msg <- paste0("✅ Downloaded ", length(all_results), " WDID(s).")
+        combined <- bind_rows(all_results)
+        write_csv(combined, file)
+        msg <- paste0("✅ Downloaded ", length(all_results), " record(s).")
         if (length(errors) > 0) {
           msg <- paste0(msg, "\nErrors:\n", paste(errors, collapse = "\n"))
         }
