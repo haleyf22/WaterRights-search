@@ -85,7 +85,7 @@ get_wellpermits_df <- function(receipt) {
     text_resp <- rawToChar(resp_body_raw(resp))
     if (grepl("receipt,", text_resp)) {
       df <- read_csv(text_resp, skip = 2, show_col_types = FALSE)
-      
+      df$receipt <- as.character(df$receipt)
       # remove any rows where first column equals its name (header as row)
       header_names <- names(df)
       

@@ -1769,10 +1769,10 @@
   },
   "files": {
     ".RData": {
-      "checksum": "90fcbacaaaa67b11367e482db910e858"
+      "checksum": "76af6fe1b669637c1c00d49b9c13101c"
     },
     "app.R": {
-      "checksum": "3d53f8a0f5c8ed8c63d500c8ceef5abb"
+      "checksum": "e91c94c3cf635780d7f44e4c47ef1c2a"
     },
     "www/logo.png": {
       "checksum": "368b47e6184a99663b8474ce20b1c76e"
