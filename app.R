@@ -25,7 +25,7 @@ get_wdid_df <- function(wdid) {
     text_resp <- rawToChar(resp_body_raw(resp))
     if (grepl("wdid,", text_resp)) {
       df <- read_csv(text_resp, skip = 2, show_col_types = FALSE) # skip first two rows to clean up output
-      
+      df$wdid <- as.character(df$wdid)
       # remove any rows where first column equals its name (header as row)
       header_names <- names(df)
       
@@ -55,7 +55,7 @@ get_structure_df <- function(wdid) {
     text_resp <- rawToChar(resp_body_raw(resp))
     if (grepl("wdid,", text_resp)) {
       df <- read_csv(text_resp, skip = 2, show_col_types = FALSE)
-      
+      df$wdid <- as.character(df$wdid)
       # remove any rows where first column equals its name (header as row)
       header_names <- names(df)
       
@@ -159,6 +159,11 @@ server <- function(input, output, session) {
         output$status <- renderText(paste("❌ No valid data downloaded.", paste(errors, collapse = "; ")))
         writeLines("No data downloaded.", file)
       } else {
+        # Ensure all columns are character to avoid type mismatch
+        all_results <- lapply(all_results, function(df) {
+          df[] <- lapply(df, as.character)
+          df
+        })
         combined <- bind_rows(all_results)
         write_csv(combined, file)
         msg <- paste0("✅ Downloaded ", length(all_results), " record(s).")
